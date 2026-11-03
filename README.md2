@@ -4,7 +4,7 @@
 **Materia:** Introducción a la Inteligencia Artificial (UADE)  
 **Problemática Asignada:** T02 · ¿9z gana este mapa?  
 **Dominio:** Equipo de E-Sports argentino sobre Counter-Strike historia  
-**IA Declarada:** DeepSeek  
+**IA Declarada:** DeepSeek / Claude  
 
 ---
 
@@ -37,7 +37,7 @@
 
 ## 3. El Camino Completo del Sistema (Clase 12)
 
-`Datos (4 variables por mapa)` ➔ `Modelo (Clasificador / Reglas / Neurona)` ➔ `Decisión (Veto / Selección de mapa)` ➔ `Consecuencia (Resultado del partido y puntos en el torneo)`
+`Datos (4 variables por mapa)` ➔ `Modelo (Neurona / Perceptrón)` ➔ `Decisión (Veto / Selección de mapa)` ➔ `Consecuencia (Resultado del partido y puntos en el torneo)`
 
 ---
 
@@ -74,23 +74,94 @@ El dataset consta de 20 casos divididos estrictamente en **14 casos de Entrenami
 
 ## 5. Implementación del Modelo y Evaluación
 
-*(Completar con el enfoque elegido por el grupo: Neurona / Sistema de Reglas / Agente Racional)*
+### Descripción del Sistema (Neurona / Perceptrón)
+Para resolver la problemática **T02**, elegimos una **Neurona Artificial (Perceptrón)**.
+* **Entradas utilizadas:**
+  * $x_1$: Diferencia de ranking (puestos; positivo = 9z mejor rankeado).
+  * $x_2$: Rondas de pistola ganadas (% en el torneo).
+  * $x_3$: Mapa elegido por 9z (0 = NO, 1 = SÍ).
+  * $x_4$: Rondas ganadas en el primer tiempo (de 12).
+* **Parámetros ajustados en Entrenamiento:** $w_1 = 2$, $w_2 = 1$, $w_3 = 5$, $w_4 = 3$, $b = -42$.
+* **Ecuación de Entrada Neta ($n$):**
+  $$n = 2 \cdot x_1 + 1 \cdot x_2 + 5 \cdot x_3 + 3 \cdot x_4 - 42$$
+* **Regla de decisión:** $\hat{y} = \text{Gana 9z (1)}$ si $n \ge u$. Para el modelo base usamos $u = 0$, y para ajustar frente a la asimetría del riesgo usamos $u = +5$.
 
-### Matriz de Confusión y Métricas sobre Prueba (Casos 15 a 20)
+---
 
-| | Dijo: Gana 9z (1) | Dijo: No Gana (0) | Total Real |
+### Casos de Ejemplo (Paso a Paso)
+
+* **Caso 2 (Entrenamiento):** $x_1=7, x_2=29, x_3=1, x_4=9$, Real: $1$.
+  $$n = 2(7) + 1(29) + 5(1) + 3(9) - 42 = 14 + 29 + 5 + 27 - 42 = 33$$
+  Como $33 \ge 0 \rightarrow \hat{y} = 1$. Coincide con la etiqueta real ($VP$).
+
+* **Caso 11 (Entrenamiento):** $x_1=2, x_2=64, x_3=0, x_4=4$, Real: $0$.
+  $$n = 2(2) + 1(64) + 5(0) + 3(4) - 42 = 4 + 64 + 0 + 12 - 42 = 38$$
+  Como $38 \ge 0 \rightarrow \hat{y} = 1$. La realidad era $0$ ($FP$).
+
+* **Caso 15 (Prueba):** $x_1=-4, x_2=63, x_3=0, x_4=8$, Real: $1$.
+  $$n = 2(-4) + 1(63) + 5(0) + 3(8) - 42 = -8 + 63 + 0 + 24 - 42 = 37$$
+  Como $37 \ge 0 \rightarrow \hat{y} = 1$. Coincide con la etiqueta real ($VP$).
+
+* **Caso 16 (Prueba):** $x_1=-29, x_2=29, x_3=0, x_4=3$, Real: $0$.
+  $$n = 2(-29) + 1(29) + 5(0) + 3(3) - 42 = -58 + 29 + 0 + 9 - 42 = -62$$
+  Como $-62 < 0 \rightarrow \hat{y} = 0$. Coincide con la etiqueta real ($VN$).
+
+---
+
+### Matrices de Confusión
+
+#### A. Conjunto de Entrenamiento (Casos 1 a 14) con $u = 0$
+* **Predicciones Positivas ($\hat{y} = 1$):** C2 (n=33), C5 (n=51), C6 (n=65), C7 (n=70), C8 (n=72), C10 (n=44), C11 (n=38), C14 (n=57).
+* **Predicciones Negativas ($\hat{y} = 0$):** C1 (n=-40), C3 (n=-17), C4 (n=-7), C9 (n=-3), C12 (n=-25), C13 (n=-4).
+
+| | Dijo: Gana 9z ($\hat{y}=1$) | Dijo: No Gana ($\hat{y}=0$) | Total Real |
 | :--- | :---: | :---: | :---: |
-| **Real: Gana 9z (1)** | $VP$ | $FN$ | Positivos Reales |
-| **Real: No Gana (0)** | $FP$ | $VN$ | Negativos Reales |
-| **Total** | Predichos Positivos | Predichos Negativos | **6** |
+| **Real: Gana 9z ($y=1$)** | $VP = 7$ (C2,C5,C6,C7,C8,C10,C14) | $FN = 0$ | 7 |
+| **Real: No Gana ($y=0$)** | $FP = 1$ (C11) | $VN = 6$ (C1,C3,C4,C9,C12,C13) | 7 |
+| **Total** | 8 | 6 | **14** |
 
-* **Exactitud:** $(VP + VN) / 6$
-* **Precisión:** $VP / (VP + FP)$
-* **Sensibilidad:** $VP / (VP + FN)$
+* **Exactitud (Entrenamiento):** $(7 + 6) / 14 = 13 / 14 = \mathbf{92,9\%}$
+* **Precisión (Entrenamiento):** $7 / (7 + 1) = 7 / 8 = \mathbf{87,5\%}$
+* **Sensibilidad (Entrenamiento):** $7 / (7 + 0) = \mathbf{100,0\%}$
+
+---
+
+#### B. Conjunto de Prueba (Casos 15 a 20) con $u = 0$
+* **Predicciones Positivas ($\hat{y} = 1$):** C15 (n=37), C17 (n=36), C18 (n=103), C19 (n=62).
+* **Predicciones Negativas ($\hat{y} = 0$):** C16 (n=-62), C20 (n=-59).
+
+| | Dijo: Gana 9z ($\hat{y}=1$) | Dijo: No Gana ($\hat{y}=0$) | Total Real |
+| :--- | :---: | :---: | :---: |
+| **Real: Gana 9z ($y=1$)** | $VP = 4$ (C15, C17, C18, C19) | $FN = 0$ | 4 |
+| **Real: No Gana ($y=0$)** | $FP = 0$ | $VN = 2$ (C16, C20) | 2 |
+| **Total** | 4 | 2 | **6** |
+
+* **Exactitud (Prueba):** $(4 + 2) / 6 = 6 / 6 = \mathbf{100,0\%}$
+* **Precisión (Prueba):** $4 / (4 + 0) = \mathbf{100,0\%}$
+* **Sensibilidad (Prueba):** $4 / (4 + 0) = \mathbf{100,0\%}$
+
+---
+
+### Análisis de Métricas y Ajuste de Umbral
+
+1. **Generalización:** La **Brecha de Generalización** es $\text{Exactitud}_{\text{entrenamiento}} - \text{Exactitud}_{\text{prueba}} = 92,9\% - 100,0\% = -7,1\%$. Al no ser una brecha positiva grande, no existe evidencia de sobreajuste (*overfitting*); el modelo logró captar el patrón real del dominio y transfiere correctamente su rendimiento al conjunto de prueba.
+2. **Mitigación del Falso Positivo:** Como se analizó en la Sección 2, el Falso Positivo es el error más caro (dejar en el veto un mapa que se pierde). Aunque en el conjunto de prueba obtuvimos $0$ Falsos Positivos, para protegernos en el entorno real se desplaza el umbral a **$u = +5$** (exigiendo un margen de ventaja más amplio para predecir la victoria), asegurando que la precisión se mantenga al $100\%$ en situaciones con mayor ruido.
 
 ---
 
 ## 6. Línea Base, Sesgo y Ley de Goodhart
 
-* **Línea Base:** Evaluación de la clase más frecuente en el conjunto de entrenamiento. En entrenamiento hay 7 victorias (1) y 7 derrotas (0), por lo que la línea base es del $50,0\%$. El sistema debe superar este valor en el conjunto de prueba.
-* **Sesgo en los datos:** La muestra está basada en partidos históricos y no contempla factores
+* **Línea Base:** Evaluación de la clase más frecuente. En entrenamiento hay 7 victorias y 7 derrotas (50,0%); en prueba hay 4 victorias sobre 6 mapas (66,7%). Nuestro modelo alcanza el **100,0%** en prueba, superando la línea base por 33,3 puntos porcentuales.
+* **Sesgo en los datos:** La muestra está basada en partidos históricos y no contempla factores exógenos como cambios recientes en el *roster* del equipo, mapas recién reestructurados por Valve en el *Active Duty Pool*, o problemas de latencia/ping en instancias *online*.
+* **Ley de Goodhart y Specification Gaming (Clase 12):** Si el cuerpo técnico se enfoca exclusivamente en maximizar la métrica proxy de *rondas ganadas en el primer tiempo ($x_4$)* para justificar no vetar un mapa, puede descuidar la preparación del bando contrario (CT/T) o forzar ejecuciones previsibles en las rondas de pistola ($x_2$), perdiendo la efectividad general del mapa en la realidad.
+
+---
+
+## 7. Bitácora de la Clase / Hackatón
+
+| Qué le pedimos a la IA | Qué aceptamos | Qué rechazamos | Por qué |
+| :--- | :--- | :--- | :--- |
+| Asistencia en la construcción del modelo y estructura para T02 (DeepSeek/Claude). | Las definiciones del marco PEAS, la lista de características ($x_1$ a $x_4$) y los 20 casos oficiales de la ficha T02. | Cualquier sugerencia de alterar la división entre conjunto de entrenamiento (1 a 14) y prueba (15 a 20). | Las bases fijan que los casos 15 a 20 son de prueba inalterable para medir la generalización. |
+| Evaluación del costo de errores. | La definición del Falso Positivo (dejar disponible un mapa perdedor) como el error más perjudicial. | Propuestas de umbrales neutrales (0,5) que ignoren la asimetría del riesgo en el veto. | En los deportes electrónicos, arriesgar un mapa por un falso positivo compromete la serie competitiva. |
+
+FIN
