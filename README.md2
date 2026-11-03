@@ -1,0 +1,63 @@
+# CS-VAC: Sistema de Detección Automática de Tramposos en Counter-Strike
+
+**Grupo:** Bruno Montes y Gonzalo Morchon  
+**Materia:** Introducción a la Inteligencia Artificial (UADE)  
+**Dominio:** Sistema Anti-Cheat (VAC) en Counter-Strike  
+**IA Declarada:** Claude  
+
+---
+
+## 1. Problemática y Especificación PEAS
+
+* **Título de la problemática:** Clasificación binaria de conducta sospechosa en matchmaking competitivo de CS2[cite: 24].
+* **Problema:** Determinar si la conducta y métricas de juego de un usuario corresponden a un jugador legítimo o a un tramposo que utiliza asistencias no permitidas (Aimbot / Wallhack), evaluando el impacto operativo de un baneo injusto frente a la evasión de sanciones[cite: 24, 25].
+* **Clase Positiva:** Tramposo / Baneado por VAC (1)[cite: 24].
+
+### Marco PEAS (Clase 2):
+* **Performance (Medida de Desempeño):** Maximizar el Valor Esperado ($VE$), reduciendo al mínimo los Falsos Positivos para proteger a los jugadores legítimos, priorizando una alta Precisión sobre la Sensibilidad inicial[cite: 24, 25, 31].
+* **Environment (Entorno):** Servidores oficiales de matchmaking competitivo de Counter-Strike[cite: 24].
+* **Actuators (Actuadores):** Emisión de baneo de cuenta, suspensión temporal o derivación del caso a revisión manual por Overwatch[cite: 24, 25].
+* **Sensors (Sensores):** Métricas numéricas de entrada tomadas de la partida ($p1$: Puntería instantánea anormal / *Snap aiming*, $p2$: Porcentaje de disparos certeros atravesando paredes/humo)[cite: 24].
+
+---
+
+## 2. El Camino Completo del Sistema (Clase 12)
+
+`Datos (Métricas p1 y p2)` ➔ `Modelo (Neurona Artificial)` ➔ `Decisión (Umbral u=+2)` ➔ `Consecuencia (Baneo/Revisión y Experiencia del Jugador)`[cite: 24, 38, 39]
+
+---
+
+## 3. Parámetros del Modelo y Umbral de Decisión
+
+### Parámetros de la Neurona:
+* **Entradas:** $p1$ (*Snap aiming*, 0 a 10) y $p2$ (Disparos a través de paredes/humo, 0 a 10). Ambos valores son enteros entre 0 y 10[cite: 24].
+* **Pesos:** $w1 = 2$, $w2 = 2$[cite: 24].
+* **Sesgo:** $b = -11$[cite: 24].
+* **Ecuación de Entrada Neta:** $n = 2 \cdot p1 + 2 \cdot p2 - 11$[cite: 24].
+* **Regla de Clasificación:** $\hat{y} = \text{Baneado (Positivo)}$ si $n \ge u$[cite: 24].
+
+### Selección y Justificación del Umbral ($u = +2$):
+En el sistema Anti-Cheat (VAC) de Counter-Strike, el **Falso Positivo (FP)** es el error más caro[cite: 25]. Banear injustamente a un jugador legítimo arruina la reputación del videojuego, genera reclamos administrativos y perjudica a usuarios inocentes[cite: 25]. Un Falso Negativo (dejar pasar a un tramposo) es molesto, pero puede corregirse mediante reportes posteriores o revisiones manuales[cite: 25].
+
+Elegimos **$u = +2$** porque prioriza la precisión: reduce los Falsos Positivos a la mitad (pasan de 2 a 1) y eleva la precisión al 75,0%[cite: 25]. Aceptamos la caída de sensibilidad (de 100,0% a 60,0%) porque un baneo injusto es operativamente peor que un tramposo que sigue jugando una partida más[cite: 25].
+
+---
+
+## 4. Matriz de Confusión y Métricas
+
+### Tabla 1. Casos de Prueba (Cuentas a mano)
+
+| Caso | p1 | p2 | Cuenta: $w1 \cdot p1 + w2 \cdot p2 + b$ | n | $\hat{y} (u=0)$ | Etiqueta real y | Resultado | $\hat{y} (u=-2)$ | $\hat{y} (u=+2)$ |
+| :--- | :---: | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **C1** | 9 | 8 | $2(9) + 2(8) - 11 = 18 + 16 - 11 = 23$[cite: 24] | 23[cite: 24] | Baneado[cite: 24] | Baneado[cite: 24] | **VP**[cite: 24] | Baneado[cite: 24] | Baneado[cite: 24] |
+| **C2** | 8 | 9 | $2(8) + 2(9) - 11 = 16 + 18 - 11 = 23$[cite: 24] | 23[cite: 24] | Baneado[cite: 24] | Baneado[cite: 24] | **VP**[cite: 24] | Baneado[cite: 24] | Baneado[cite: 24] |
+| **C3** | 7 | 6 | $2(7) + 2(6) - 11 = 14 + 12 - 11 = 15$[cite: 24] | 15[cite: 24] | Baneado[cite: 24] | Baneado[cite: 24] | **VP**[cite: 24] | Baneado[cite: 24] | Baneado[cite: 24] |
+| **C4** | 5 | 1 | $2(5) + 2(1) - 11 = 10 + 2 - 11 = 1$[cite: 24] | 1[cite: 24] | Baneado[cite: 24] | Baneado[cite: 24] | **VP**[cite: 24] | Baneado[cite: 24] | Legítimo[cite: 24] |
+| **C5** | 6 | 0 | $2(6) + 2(0) - 11 = 12 + 0 - 11 = 1$[cite: 24] | 1[cite: 24] | Baneado[cite: 24] | Baneado[cite: 24] | **VP**[cite: 24] | Baneado[cite: 24] | Legítimo[cite: 24] |
+| **C6** | 4 | 2 | $2(4) + 2(2) - 11 = 8 + 4 - 11 = 1$[cite: 24] | 1[cite: 24] | Baneado[cite: 24] | Legítimo[cite: 24] | **FP**[cite: 24] | Baneado[cite: 24] | Legítimo[cite: 24] |
+| **C7** | 3 | 2 | $2(3) + 2(2) - 11 = 6 + 4 - 11 = -1$[cite: 24] | -1[cite: 24] | Legítimo[cite: 24] | Legítimo[cite: 24] | **VN**[cite: 24] | Baneado[cite: 24] | Legítimo[cite: 24] |
+| **C8** | 2 | 3 | $2(2) + 2(3) - 11 = 4 + 6 - 11 = -1$[cite: 24] | -1[cite: 24] | Legítimo[cite: 24] | Legítimo[cite: 24] | **VN**[cite: 24] | Baneado[cite: 24] | Legítimo[cite: 24] |
+| **C9** | 1 | 1 | $2(1) + 2(1) - 11 = 2 + 2 - 11 = -7$[cite: 24] | -7[cite: 24] | Legítimo[cite: 24] | Legítimo[cite: 24] | **VN**[cite: 24] | Legítimo[cite: 24] | Legítimo[cite: 24] |
+| **C10**| 0 | 2 | $2(0) + 2(2) - 11 = 0 + 4 - 11 = -7$[cite: 24] | -7[cite: 24] | Legítimo[cite: 24] | Legítimo[cite: 24] | **VN**[cite: 24] | Legítimo[cite: 24] | Legítimo[cite: 24] |
+| **C11**| 5 | 5 | $2(5) + 2(5) - 11 = 10 + 10 - 11 = 9$[cite: 24] | 9[cite: 24] | Baneado[cite: 24] | Legítimo[cite: 24] | **FP**[cite: 24] | Baneado[cite: 24] | Baneado[cite: 24] |
+| **C12**| 1 | 0 | $2(1) + 2(0) - 11 = 2 + 0 - 11 = -9$[cite: 24] | -9[cite: 24] | Legítimo[cite: 24] | Legítimo[cite: 24] | **VN**[cite: 24] | Legítimo
