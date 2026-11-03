@@ -1,63 +1,96 @@
-# CS-VAC: Sistema de Detección Automática de Tramposos en Counter-Strike
+# CS-9z: Predicción y Selección de Mapas (Veto) para 9z Team en Counter-Strike
 
 **Grupo:** Bruno Montes y Gonzalo Morchon  
 **Materia:** Introducción a la Inteligencia Artificial (UADE)  
-**Dominio:** Sistema Anti-Cheat (VAC) en Counter-Strike  
-**IA Declarada:** Claude  
+**Problemática Asignada:** T02 · ¿9z gana este mapa?  
+**Dominio:** Equipo de E-Sports argentino sobre Counter-Strike historia  
+**IA Declarada:** DeepSeek  
 
 ---
 
 ## 1. Problemática y Especificación PEAS
 
-* **Título de la problemática:** Clasificación binaria de conducta sospechosa en matchmaking competitivo de CS2[cite: 24].
-* **Problema:** Determinar si la conducta y métricas de juego de un usuario corresponden a un jugador legítimo o a un tramposo que utiliza asistencias no permitidas (Aimbot / Wallhack), evaluando el impacto operativo de un baneo injusto frente a la evasión de sanciones[cite: 24, 25].
-* **Clase Positiva:** Tramposo / Baneado por VAC (1)[cite: 24].
+* **Título de la problemática:** T02 · ¿9z gana este mapa?
+* **Situación:** El analista y el capitán de 9z Team buscan predecir qué mapas ganará el equipo para tomar decisiones estratégicas fundamentadas durante la fase de veto de mapas antes de cada partido.
+* **La pregunta:** Para cada mapa evaluado, ¿SÍ (1) o NO (0)? **SÍ** = 9z gana el mapa.
+* **Clase Positiva:** 9z gana el mapa (1).
 
-### Marco PEAS (Clase 2):
-* **Performance (Medida de Desempeño):** Maximizar el Valor Esperado ($VE$), reduciendo al mínimo los Falsos Positivos para proteger a los jugadores legítimos, priorizando una alta Precisión sobre la Sensibilidad inicial[cite: 24, 25, 31].
-* **Environment (Entorno):** Servidores oficiales de matchmaking competitivo de Counter-Strike[cite: 24].
-* **Actuators (Actuadores):** Emisión de baneo de cuenta, suspensión temporal o derivación del caso a revisión manual por Overwatch[cite: 24, 25].
-* **Sensors (Sensores):** Métricas numéricas de entrada tomadas de la partida ($p1$: Puntería instantánea anormal / *Snap aiming*, $p2$: Porcentaje de disparos certeros atravesando paredes/humo)[cite: 24].
-
----
-
-## 2. El Camino Completo del Sistema (Clase 12)
-
-`Datos (Métricas p1 y p2)` ➔ `Modelo (Neurona Artificial)` ➔ `Decisión (Umbral u=+2)` ➔ `Consecuencia (Baneo/Revisión y Experiencia del Jugador)`[cite: 24, 38, 39]
-
----
-
-## 3. Parámetros del Modelo y Umbral de Decisión
-
-### Parámetros de la Neurona:
-* **Entradas:** $p1$ (*Snap aiming*, 0 a 10) y $p2$ (Disparos a través de paredes/humo, 0 a 10). Ambos valores son enteros entre 0 y 10[cite: 24].
-* **Pesos:** $w1 = 2$, $w2 = 2$[cite: 24].
-* **Sesgo:** $b = -11$[cite: 24].
-* **Ecuación de Entrada Neta:** $n = 2 \cdot p1 + 2 \cdot p2 - 11$[cite: 24].
-* **Regla de Clasificación:** $\hat{y} = \text{Baneado (Positivo)}$ si $n \ge u$[cite: 24].
-
-### Selección y Justificación del Umbral ($u = +2$):
-En el sistema Anti-Cheat (VAC) de Counter-Strike, el **Falso Positivo (FP)** es el error más caro[cite: 25]. Banear injustamente a un jugador legítimo arruina la reputación del videojuego, genera reclamos administrativos y perjudica a usuarios inocentes[cite: 25]. Un Falso Negativo (dejar pasar a un tramposo) es molesto, pero puede corregirse mediante reportes posteriores o revisiones manuales[cite: 25].
-
-Elegimos **$u = +2$** porque prioriza la precisión: reduce los Falsos Positivos a la mitad (pasan de 2 a 1) y eleva la precisión al 75,0%[cite: 25]. Aceptamos la caída de sensibilidad (de 100,0% a 60,0%) porque un baneo injusto es operativamente peor que un tramposo que sigue jugando una partida más[cite: 25].
+### Marco PEAS (Clase 2 / Clase 12):
+* **Performance (Medida de Desempeño):** Maximización del Valor Esperado ($VE$), minimizando los Falsos Positivos para evitar dejar abierto en la fase de veto un mapa que el equipo terminará perdiendo.
+* **Environment (Entorno):** Torneos competitivos e instancias oficiales de veto de mapas en Counter-Strike.
+* **Actuators (Actuadores):** Selección (pick) o descarte (ban/veto) de cada mapa durante el proceso de veto antes del partido.
+* **Sensors (Sensores):** 
+  * $x_1$: Diferencia de ranking (puestos; positivo = 9z mejor rankeado).
+  * $x_2$: Rondas de pistola ganadas (% en el torneo).
+  * $x_3$: Mapa elegido por 9z (0 = NO, 1 = SÍ).
+  * $x_4$: Rondas ganadas en el primer tiempo (de 12).
 
 ---
 
-## 4. Matriz de Confusión y Métricas
+## 2. Análisis de Errores y Costos (Asimetría)
 
-### Tabla 1. Casos de Prueba (Cuentas a mano)
+* **Falso Positivo (FP - Dice SÍ y era NO):** Dejar disponible en la fase de veto un mapa que el equipo termina perdiendo. **Este error es el más costoso**, ya que compromete una serie oficial o torneo al forzar a jugar en una desventaja táctica real.
+* **Falso Negativo (FN - Dice NO y era SÍ):** Vetar un mapa que 9z podría haber ganado. Es molesto, pero menos grave, ya que el equipo conserva la oportunidad de competir en otro mapa de su pool habitual.
+* **Criterio de Decisión:** Dado que un Falso Positivo es sensiblemente más caro, el umbral del sistema debe ser conservador / exigente, exigiendo mayores evidencias para predecir la victoria (SÍ).
 
-| Caso | p1 | p2 | Cuenta: $w1 \cdot p1 + w2 \cdot p2 + b$ | n | $\hat{y} (u=0)$ | Etiqueta real y | Resultado | $\hat{y} (u=-2)$ | $\hat{y} (u=+2)$ |
-| :--- | :---: | :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **C1** | 9 | 8 | $2(9) + 2(8) - 11 = 18 + 16 - 11 = 23$[cite: 24] | 23[cite: 24] | Baneado[cite: 24] | Baneado[cite: 24] | **VP**[cite: 24] | Baneado[cite: 24] | Baneado[cite: 24] |
-| **C2** | 8 | 9 | $2(8) + 2(9) - 11 = 16 + 18 - 11 = 23$[cite: 24] | 23[cite: 24] | Baneado[cite: 24] | Baneado[cite: 24] | **VP**[cite: 24] | Baneado[cite: 24] | Baneado[cite: 24] |
-| **C3** | 7 | 6 | $2(7) + 2(6) - 11 = 14 + 12 - 11 = 15$[cite: 24] | 15[cite: 24] | Baneado[cite: 24] | Baneado[cite: 24] | **VP**[cite: 24] | Baneado[cite: 24] | Baneado[cite: 24] |
-| **C4** | 5 | 1 | $2(5) + 2(1) - 11 = 10 + 2 - 11 = 1$[cite: 24] | 1[cite: 24] | Baneado[cite: 24] | Baneado[cite: 24] | **VP**[cite: 24] | Baneado[cite: 24] | Legítimo[cite: 24] |
-| **C5** | 6 | 0 | $2(6) + 2(0) - 11 = 12 + 0 - 11 = 1$[cite: 24] | 1[cite: 24] | Baneado[cite: 24] | Baneado[cite: 24] | **VP**[cite: 24] | Baneado[cite: 24] | Legítimo[cite: 24] |
-| **C6** | 4 | 2 | $2(4) + 2(2) - 11 = 8 + 4 - 11 = 1$[cite: 24] | 1[cite: 24] | Baneado[cite: 24] | Legítimo[cite: 24] | **FP**[cite: 24] | Baneado[cite: 24] | Legítimo[cite: 24] |
-| **C7** | 3 | 2 | $2(3) + 2(2) - 11 = 6 + 4 - 11 = -1$[cite: 24] | -1[cite: 24] | Legítimo[cite: 24] | Legítimo[cite: 24] | **VN**[cite: 24] | Baneado[cite: 24] | Legítimo[cite: 24] |
-| **C8** | 2 | 3 | $2(2) + 2(3) - 11 = 4 + 6 - 11 = -1$[cite: 24] | -1[cite: 24] | Legítimo[cite: 24] | Legítimo[cite: 24] | **VN**[cite: 24] | Baneado[cite: 24] | Legítimo[cite: 24] |
-| **C9** | 1 | 1 | $2(1) + 2(1) - 11 = 2 + 2 - 11 = -7$[cite: 24] | -7[cite: 24] | Legítimo[cite: 24] | Legítimo[cite: 24] | **VN**[cite: 24] | Legítimo[cite: 24] | Legítimo[cite: 24] |
-| **C10**| 0 | 2 | $2(0) + 2(2) - 11 = 0 + 4 - 11 = -7$[cite: 24] | -7[cite: 24] | Legítimo[cite: 24] | Legítimo[cite: 24] | **VN**[cite: 24] | Legítimo[cite: 24] | Legítimo[cite: 24] |
-| **C11**| 5 | 5 | $2(5) + 2(5) - 11 = 10 + 10 - 11 = 9$[cite: 24] | 9[cite: 24] | Baneado[cite: 24] | Legítimo[cite: 24] | **FP**[cite: 24] | Baneado[cite: 24] | Baneado[cite: 24] |
-| **C12**| 1 | 0 | $2(1) + 2(0) - 11 = 2 + 0 - 11 = -9$[cite: 24] | -9[cite: 24] | Legítimo[cite: 24] | Legítimo[cite: 24] | **VN**[cite: 24] | Legítimo
+---
+
+## 3. El Camino Completo del Sistema (Clase 12)
+
+`Datos (4 variables por mapa)` ➔ `Modelo (Clasificador / Reglas / Neurona)` ➔ `Decisión (Veto / Selección de mapa)` ➔ `Consecuencia (Resultado del partido y puntos en el torneo)`
+
+---
+
+## 4. Dataset de la Problemática (T02)
+
+El dataset consta de 20 casos divididos estrictamente en **14 casos de Entrenamiento** (Casos 1 a 14) para ajustar el modelo y **6 casos de Prueba** (Casos 15 a 20) para evaluar la generalización.
+
+### Datos de Entrenamiento y Prueba (T02)
+
+| Caso | Conjunto | Dif. Ranking ($x_1$) | % Pistolas ($x_2$) | Pick 9z ($x_3$) | Rondas 1T ($x_4$) | Resultado Real (1 = SÍ) |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **1** | Entrenamiento | -19 | 66 | 0 | 2 | **0** |
+| **2** | Entrenamiento | 7 | 29 | 1 | 9 | **1** |
+| **3** | Entrenamiento | -6 | 23 | 1 | 4 | **0** |
+| **4** | Entrenamiento | -7 | 29 | 0 | 4 | **0** |
+| **5** | Entrenamiento | 2 | 68 | 1 | 8 | **1** |
+| **6** | Entrenamiento | 5 | 79 | 1 | 7 | **1** |
+| **7** | Entrenamiento | 11 | 76 | 0 | 9 | **1** |
+| **8** | Entrenamiento | 27 | 31 | 1 | 9 | **1** |
+| **9** | Entrenamiento | -3 | 58 | 0 | 5 | **0** |
+| **10**| Entrenamiento | 12 | 38 | 1 | 7 | **1** |
+| **11**| Entrenamiento | 2 | 64 | 0 | 4 | **0** |
+| **12**| Entrenamiento | -4 | 42 | 0 | 3 | **0** |
+| **13**| Entrenamiento | -16 | 54 | 0 | 2 | **0** |
+| **14**| Entrenamiento | -5 | 70 | 1 | 8 | **1** |
+| **15**| Prueba | -4 | 63 | 0 | 8 | **1** |
+| **16**| Prueba | -29 | 29 | 0 | 3 | **0** |
+| **17**| Prueba | 0 | 46 | 1 | 9 | **1** |
+| **18**| Prueba | 27 | 67 | 0 | 8 | **1** |
+| **19**| Prueba | 20 | 38 | 0 | 8 | **1** |
+| **20**| Prueba | -16 | 22 | 1 | 3 | **0** |
+
+---
+
+## 5. Implementación del Modelo y Evaluación
+
+*(Completar con el enfoque elegido por el grupo: Neurona / Sistema de Reglas / Agente Racional)*
+
+### Matriz de Confusión y Métricas sobre Prueba (Casos 15 a 20)
+
+| | Dijo: Gana 9z (1) | Dijo: No Gana (0) | Total Real |
+| :--- | :---: | :---: | :---: |
+| **Real: Gana 9z (1)** | $VP$ | $FN$ | Positivos Reales |
+| **Real: No Gana (0)** | $FP$ | $VN$ | Negativos Reales |
+| **Total** | Predichos Positivos | Predichos Negativos | **6** |
+
+* **Exactitud:** $(VP + VN) / 6$
+* **Precisión:** $VP / (VP + FP)$
+* **Sensibilidad:** $VP / (VP + FN)$
+
+---
+
+## 6. Línea Base, Sesgo y Ley de Goodhart
+
+* **Línea Base:** Evaluación de la clase más frecuente en el conjunto de entrenamiento. En entrenamiento hay 7 victorias (1) y 7 derrotas (0), por lo que la línea base es del $50,0\%$. El sistema debe superar este valor en el conjunto de prueba.
+* **Sesgo en los datos:** La muestra está basada en partidos históricos y no contempla factores
